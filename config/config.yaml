@@ -1,0 +1,4 @@
+SERVER_ADDRESS: "127.0.0.1:8080"
+BASE_URL: "http://127.0.0.1:8080"
+FILE_STORAGE_PATH: "urls.log"
+DATABASE_DSN: "postgresql://localhost:5432/postgres"
