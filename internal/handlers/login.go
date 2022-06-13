@@ -10,7 +10,7 @@ import (
 )
 
 func (h *handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	type regData struct {
+	type reqData struct {
 		Login    string `json:"login"`
 		Password string `json:"password"`
 	}
@@ -18,6 +18,8 @@ func (h *handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	body, err := io.ReadAll(r.Body)
@@ -27,7 +29,7 @@ func (h *handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unmarshalBody := regData{}
+	unmarshalBody := reqData{}
 	if err := json.Unmarshal(body, &unmarshalBody); err != nil {
 		log.Println("can't unmarshal request body", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -38,7 +40,7 @@ func (h *handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	encLogin := e.EncodeData(unmarshalBody.Login)
 	encPassword := e.EncodeData(unmarshalBody.Password)
 
-	err = h.stg.CheckUserData(storage.User{
+	err = h.auth.CheckUserData(storage.User{
 		Token:    token.Value,
 		Login:    encLogin,
 		Password: encPassword,
@@ -48,4 +50,5 @@ func (h *handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 	}
 
+	w.WriteHeader(http.StatusOK)
 }

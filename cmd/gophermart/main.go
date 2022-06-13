@@ -6,6 +6,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/mkarulina/loyalty-system-service.git/config"
+	"github.com/mkarulina/loyalty-system-service.git/internal/accrual"
+	"github.com/mkarulina/loyalty-system-service.git/internal/authentication"
 	"github.com/mkarulina/loyalty-system-service.git/internal/encryption"
 	"github.com/mkarulina/loyalty-system-service.git/internal/handlers"
 	"github.com/mkarulina/loyalty-system-service.git/internal/storage"
@@ -28,25 +30,27 @@ func main() {
 		log.Fatal("cannot load config:", err)
 	}
 
+	accrual.StartCron()
+
 	h := handlers.NewHandler(storage.New())
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/api/user", func(r chi.Router) {
+	r.Route("/api/", func(r chi.Router) {
 
-		r.Route("/register", func(r chi.Router) {
+		r.Route("/user/register", func(r chi.Router) {
 			r.Use(tokenHandle)
 			r.Post("/", h.RegisterHandler)
 		})
 
-		r.Route("/login", func(r chi.Router) {
+		r.Route("/user/login", func(r chi.Router) {
 			r.Use(tokenHandle)
 			r.Post("/", h.LoginHandler)
 		})
 
-		r.Route("/", func(r chi.Router) {
+		r.Route("/user/", func(r chi.Router) {
 			r.Use(auth)
 			r.Use(gzipHandle)
 			r.Post("/orders", h.SendOrderHandler)                         //загрузка пользователем номера заказа для расчёта
@@ -57,7 +61,7 @@ func main() {
 		})
 	})
 
-	address := viper.GetString("SERVER_ADDRESS")
+	address := viper.GetString("RUN_ADDRESS")
 
 	if err := http.ListenAndServe(address, r); err != nil {
 		log.Fatal(err)
@@ -101,16 +105,17 @@ func gzipHandle(next http.Handler) http.Handler {
 
 func auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		stg := storage.New()
+		auth := authentication.New()
 
 		token, err := r.Cookie("session_token")
 		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("user not authorized"))
 			return
 		}
 
 		if token != nil && len(token.Value) >= 16 {
-			valid, err := stg.CheckTokenIsValid(token.Value)
+			valid, err := auth.CheckTokenIsValid(token.Value)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -120,7 +125,7 @@ func auth(next http.Handler) http.Handler {
 				return
 			}
 
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("user not authorized"))
 			return
 		}

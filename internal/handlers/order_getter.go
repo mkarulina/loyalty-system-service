@@ -2,24 +2,28 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 )
 
 func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 	type orderResp struct {
-		Number      string `json:"number"`
-		Status      string `json:"status"`
-		Accrual     int    `json:"accrual,omitempty"`
-		Uploaded_at string `json:"uploaded_at"`
+		Number     string  `json:"number"`
+		Status     string  `json:"status"`
+		Accrual    float32 `json:"accrual,omitempty"`
+		UploadedAt string  `json:"uploaded_at"`
 	}
 	var resp []orderResp
 
 	token, err := r.Cookie("session_token")
 	if err != nil || token == nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
-	orders, err := h.stg.GetUsersOrders(token.Value)
+	orders, err := h.stg.GetUserOrders(token.Value)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -32,13 +36,12 @@ func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, o := range orders {
 		resp = append(resp, orderResp{
-			Number:      o.Number,
-			Status:      o.Status,
-			Accrual:     o.Accrual,
-			Uploaded_at: o.UploadedAt.String(),
+			Number:     o.Number,
+			Status:     o.Status,
+			Accrual:    o.Accrual,
+			UploadedAt: o.UploadedAt.Format(time.RFC3339),
 		})
 	}
-
 	marshalResp, err := json.Marshal(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -46,7 +49,7 @@ func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(marshalResp)
 }

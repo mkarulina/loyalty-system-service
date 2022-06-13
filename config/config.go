@@ -7,10 +7,9 @@ import (
 )
 
 type Config struct {
-	serverAddress string `yaml:"SERVER_ADDRESS"`
-	baseURL       string `yaml:"BASE_URL"`
-	filePath      string `yaml:"FILE_STORAGE_PATH"`
-	dbAddress     string `yaml:"DATABASE_DSN"`
+	runAddress     string `yaml:"RUN_ADDRESS"`
+	dbAddress      string `yaml:"DATABASE_URI"`
+	accrualAddress string `yaml:"ACCRUAL_SYSTEM_ADDRESS"`
 }
 
 func LoadConfig(path string) (config *Config, err error) {
@@ -27,23 +26,20 @@ func LoadConfig(path string) (config *Config, err error) {
 		return conf, err
 	}
 
-	flag.StringVar(&conf.serverAddress, "a", ":8080", "port to listen on")
-	flag.StringVar(&conf.baseURL, "b", "http://localhost:8080/", "base short url")
-	flag.StringVar(&conf.filePath, "f", "../urls.log", "file path for url saving")
+	flag.StringVar(&conf.runAddress, "a", ":8080", "port to listen on")
 	flag.StringVar(&conf.dbAddress, "d", "postgresql://localhost:5432/postgres", "data base address")
+	flag.StringVar(&conf.accrualAddress, "r", ":8090", "accrual system address")
 
 	flag.Parse()
 
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "a":
-			viper.Set("SERVER_ADDRESS", &conf.serverAddress)
-		case "b":
-			viper.Set("BASE_URL", &conf.baseURL)
-		case "f":
-			viper.Set("FILE_STORAGE_PATH", &conf.filePath)
+			viper.Set("RUN_ADDRESS", &conf.runAddress)
 		case "d":
-			viper.Set("DATABASE_DSN", &conf.dbAddress)
+			viper.Set("DATABASE_URI", &conf.dbAddress)
+		case "r":
+			viper.Set("ACCRUAL_SYSTEM_ADDRESS", &conf.accrualAddress)
 		}
 	})
 

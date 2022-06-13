@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	authentication "github.com/mkarulina/loyalty-system-service.git/internal/authentication"
 	"github.com/mkarulina/loyalty-system-service.git/internal/storage"
 	"net/http"
 )
@@ -16,12 +17,14 @@ type Handler interface {
 }
 
 type handler struct {
-	stg storage.Storage
+	stg  storage.Storage
+	auth authentication.Auth
 }
 
 func NewHandler(s storage.Storage) Handler {
 	h := &handler{
-		stg: s,
+		stg:  s,
+		auth: authentication.New(),
 	}
 	return h
 }
