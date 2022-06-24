@@ -30,8 +30,6 @@ func main() {
 		authentication.New(),
 	)
 
-	mw := middleware2.NewMiddleware()
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -39,22 +37,22 @@ func main() {
 	r.Route("/api/", func(r chi.Router) {
 
 		r.Route("/user/register", func(r chi.Router) {
-			r.Use(mw.TokenHandle)
+			r.Use(middleware2.TokenHandle)
 			r.Post("/", h.RegisterHandler)
 		})
 
 		r.Route("/user/login", func(r chi.Router) {
-			r.Use(mw.TokenHandle)
+			r.Use(middleware2.TokenHandle)
 			r.Post("/", h.LoginHandler)
 		})
 
 		r.Route("/user/", func(r chi.Router) {
-			r.Use(mw.Auth)
-			r.Use(mw.GzipHandle)
+			r.Use(middleware2.Auth)
+			r.Use(middleware2.GzipHandle)
 			r.Post("/orders", h.SendOrderHandler)                         //загрузка пользователем номера заказа для расчёта
 			r.Get("/orders", h.GetOrderHandler)                           //получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
 			r.Get("/balance", h.GetBalanceHandler)                        //получение текущего баланса счёта баллов лояльности пользователя
-			r.Post("/balance/withdraw", h.WithdrawHandler)                //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа;
+			r.Post("/balance/withdraw", h.WithdrawHandler)                //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
 			r.Get("/balance/withdrawals", h.GetWithdrawalsHistoryHandler) //получение информации о выводе средств с накопительного счёта пользователем
 		})
 	})

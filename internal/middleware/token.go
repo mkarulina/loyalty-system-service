@@ -2,12 +2,13 @@ package middleware
 
 import (
 	"encoding/hex"
+	"github.com/mkarulina/loyalty-system-service.git/internal/encryption"
 	"log"
 	"net/http"
 	"time"
 )
 
-func (m *middleware) TokenHandle(next http.Handler) http.Handler {
+func TokenHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := r.Cookie("session_token")
 		if token != nil && len(token.Value) >= 16 {
@@ -18,7 +19,9 @@ func (m *middleware) TokenHandle(next http.Handler) http.Handler {
 			log.Println(err)
 		}
 
-		random, err := m.enc.GenerateRandom(16)
+		e := encryption.New()
+
+		random, err := e.GenerateRandom(16)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -26,7 +29,7 @@ func (m *middleware) TokenHandle(next http.Handler) http.Handler {
 
 		newUser := hex.EncodeToString(random)
 
-		newToken, err := m.enc.EncryptData([]byte(newUser))
+		newToken, err := e.EncryptData([]byte(newUser))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

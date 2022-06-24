@@ -1,10 +1,11 @@
 package middleware
 
 import (
+	"github.com/mkarulina/loyalty-system-service.git/internal/authentication"
 	"net/http"
 )
 
-func (m *middleware) Auth(next http.Handler) http.Handler {
+func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := r.Cookie("session_token")
 		if err != nil {
@@ -13,8 +14,10 @@ func (m *middleware) Auth(next http.Handler) http.Handler {
 			return
 		}
 
+		auth := authentication.New()
+
 		if token != nil && len(token.Value) >= 16 {
-			valid, err := m.auth.CheckTokenIsValid(token.Value)
+			valid, err := auth.CheckTokenIsValid(token.Value)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
