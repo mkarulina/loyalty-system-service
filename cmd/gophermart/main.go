@@ -44,7 +44,7 @@ func main() {
 		})
 
 		r.Route("/user/login", func(r chi.Router) {
-			r.Use(mw.Auth)
+			r.Use(mw.TokenHandle)
 			r.Post("/", h.LoginHandler)
 		})
 
