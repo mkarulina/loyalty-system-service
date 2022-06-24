@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func (h *handler) GetWithdrawalsHistoryHandler(w http.ResponseWriter, r *http.Request) {
-	type respData struct {
-		Order       string    `json:"order"`
-		Sum         float32   `json:"sum"`
-		ProcessedAt time.Time `json:"processed_at"`
-	}
+type withdrawalsHistoryResp struct {
+	Order       string    `json:"order"`
+	Sum         float32   `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
+}
 
-	var resp []respData
+func (h *handler) GetWithdrawalsHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	var resp []withdrawalsHistoryResp
 
 	token, err := r.Cookie("session_token")
 	if err != nil || token == nil {
@@ -23,10 +23,10 @@ func (h *handler) GetWithdrawalsHistoryHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	withdrawals, err := h.stg.GetWithdrawalsHistory(token.Value)
+	withdrawals, err := h.historyStg.GetWithdrawalsHistory(token.Value)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 	if len(withdrawals) == 0 {
@@ -35,7 +35,7 @@ func (h *handler) GetWithdrawalsHistoryHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	for _, w := range withdrawals {
-		resp = append(resp, respData{
+		resp = append(resp, withdrawalsHistoryResp{
 			Order:       w.OrderNumber,
 			Sum:         w.Sum,
 			ProcessedAt: w.ProcessedAt,
@@ -44,8 +44,8 @@ func (h *handler) GetWithdrawalsHistoryHandler(w http.ResponseWriter, r *http.Re
 
 	marshalResp, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 

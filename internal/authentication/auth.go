@@ -5,16 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/jackc/pgerrcode"
-	"github.com/mkarulina/loyalty-system-service.git/internal/storage"
 	"github.com/spf13/viper"
 	"sync"
 	"time"
 )
 
+type User struct {
+	Token    string
+	Login    string
+	Password string
+}
+
 type Auth interface {
-	AddUserInfoToTable(user storage.User) error
-	CheckUserData(user storage.User) error
+	AddUserInfoToTable(user User) error
+	CheckUserData(user User) error
 	CheckTokenIsValid(token string) (bool, error)
+	GetUserLoginByToken(token string, db *sql.DB) (string, error)
 }
 
 type auth struct {
@@ -28,10 +34,8 @@ func New() Auth {
 	return a
 }
 
-func (a *auth) AddUserInfoToTable(user storage.User) error {
+func (a *auth) AddUserInfoToTable(user User) error {
 	dbAddress := viper.GetString("DATABASE_URI")
-	var wg sync.WaitGroup
-	var errToReturn error
 
 	db, err := sql.Open("pgx", dbAddress)
 	if err != nil {
@@ -42,53 +46,27 @@ func (a *auth) AddUserInfoToTable(user storage.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	doIncrement := func() {
-		a.mu.Lock()
-		defer a.mu.Unlock()
-		defer wg.Done()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-		_, err = db.ExecContext(
-			ctx,
-			"CREATE TABLE IF NOT EXISTS users (token VARCHAR(255), login VARCHAR(255) UNIQUE, password VARCHAR(255))",
-		)
-		if err != nil {
-			errToReturn = err
-			return
-		}
-
-		tx, err := db.Begin()
-		if err != nil {
-			errToReturn = err
-		}
-		defer tx.Rollback()
-
-		result, err := db.ExecContext(
-			ctx,
-			"INSERT INTO users (token, login, password) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-			user.Token, user.Login, user.Password,
-		)
-		if err != nil {
-			errToReturn = err
-			return
-		}
-
-		if affected, _ := result.RowsAffected(); affected == 0 {
-			errToReturn = errors.New(pgerrcode.UniqueViolation)
-			return
-		}
+	result, err := db.ExecContext(
+		ctx,
+		"INSERT INTO users (token, login, password) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+		user.Token, user.Login, user.Password,
+	)
+	if err != nil {
+		return err
 	}
 
-	wg.Add(1)
-	go doIncrement()
-	wg.Wait()
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return errors.New(pgerrcode.UniqueViolation)
+	}
 
-	return errToReturn
+	return nil
 }
 
-func (a *auth) CheckUserData(user storage.User) error {
+func (a *auth) CheckUserData(user User) error {
 	dbAddress := viper.GetString("DATABASE_URI")
-	var wg sync.WaitGroup
-	var errToReturn error
 
 	db, err := sql.Open("pgx", dbAddress)
 	if err != nil {
@@ -106,24 +84,16 @@ func (a *auth) CheckUserData(user storage.User) error {
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return errors.New("user not registered")
 	}
-	
-	doIncrement := func() {
-		a.mu.Lock()
-		defer a.mu.Unlock()
-		defer wg.Done()
 
-		_, err = db.ExecContext(ctx, "UPDATE users SET token = $1 WHERE login = $2 AND password = $3", user.Token, user.Login, user.Password)
-		if err != nil {
-			errToReturn = err
-			return
-		}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	_, err = db.ExecContext(ctx, "UPDATE users SET token = $1 WHERE login = $2 AND password = $3", user.Token, user.Login, user.Password)
+	if err != nil {
+		return err
 	}
 
-	wg.Add(1)
-	go doIncrement()
-	wg.Wait()
-
-	return errToReturn
+	return nil
 }
 
 func (a *auth) CheckTokenIsValid(token string) (bool, error) {
@@ -148,4 +118,21 @@ func (a *auth) CheckTokenIsValid(token string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (a *auth) GetUserLoginByToken(token string, db *sql.DB) (string, error) {
+	var login string
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	loginRow := db.QueryRowContext(ctx, "SELECT login FROM users WHERE token = $1", token)
+	if loginRow == nil {
+		return "", errors.New("user not found")
+	}
+	err := loginRow.Scan(&login)
+	if err != nil {
+		return "", err
+	}
+	return login, nil
 }

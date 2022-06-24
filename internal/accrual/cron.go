@@ -12,15 +12,16 @@ import (
 
 func StartCron() {
 	c := cron.New()
+	s := storage.NewOrderStorage()
 
 	c.AddFunc("@every 10s", func() {
-		GetOrdersStatus()
+		GetOrdersStatus(s)
 	})
 
 	c.Start()
 }
 
-func GetOrdersStatus() {
+func GetOrdersStatus(s storage.OrderStorage) {
 	type accrualResp struct {
 		Order   string  `json:"order"`
 		Status  string  `json:"status"`
@@ -30,8 +31,7 @@ func GetOrdersStatus() {
 
 	accrualAddress := viper.GetString("ACCRUAL_SYSTEM_ADDRESS")
 
-	s := storage.New()
-	orders, err := s.GetAllOrders()
+	orders, err := s.GetUnprocessedOrders()
 	if err != nil {
 		log.Println(err)
 	}

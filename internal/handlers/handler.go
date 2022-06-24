@@ -17,14 +17,20 @@ type Handler interface {
 }
 
 type handler struct {
-	stg  storage.Storage
-	auth authentication.Auth
+	orderStg   storage.OrderStorage
+	historyStg storage.HistoryStorage
+	auth       authentication.Auth
 }
 
-func NewHandler(s storage.Storage) Handler {
+func NewHandler(
+	orderStg storage.OrderStorage,
+	historyStg storage.HistoryStorage,
+	auth authentication.Auth,
+) Handler {
 	h := &handler{
-		stg:  s,
-		auth: authentication.New(),
+		orderStg:   orderStg,
+		historyStg: historyStg,
+		auth:       auth,
 	}
 	return h
 }

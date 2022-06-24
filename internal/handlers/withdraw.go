@@ -8,12 +8,12 @@ import (
 	"net/http"
 )
 
-func (h *handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
-	type reqData struct {
-		Order string  `json:"order"`
-		Sum   float32 `json:"sum"`
-	}
+type withdrawReq struct {
+	Order string  `json:"order"`
+	Sum   float32 `json:"sum"`
+}
 
+func (h *handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("session_token")
 	if err != nil || token == nil {
 		log.Println(err)
@@ -28,17 +28,17 @@ func (h *handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unmarshalBody := reqData{}
+	unmarshalBody := withdrawReq{}
 	if err := json.Unmarshal(body, &unmarshalBody); err != nil {
 		log.Println("can't unmarshal request body", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	balance, withdrawn, err := h.stg.GetUserBalanceAndWithdrawn(token.Value)
+	balance, withdrawn, err := h.orderStg.GetUserBalanceAndWithdrawn(token.Value)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -48,19 +48,19 @@ func (h *handler) WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.stg.AddOrderNumber(unmarshalBody.Order, token.Value)
+	err = h.orderStg.AddOrderNumber(unmarshalBody.Order, token.Value)
 	if err != nil {
 		if err.Error() != pgerrcode.UniqueViolation && err.Error() != "duplicate" {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
 			return
 		}
 	}
 
-	err = h.stg.WithdrawUserPoints(token.Value, unmarshalBody.Order, unmarshalBody.Sum)
+	err = h.orderStg.WithdrawUserPoints(token.Value, unmarshalBody.Order, unmarshalBody.Sum)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 

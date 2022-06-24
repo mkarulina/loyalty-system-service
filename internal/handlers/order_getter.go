@@ -7,13 +7,14 @@ import (
 	"time"
 )
 
+type orderResp struct {
+	Number     string  `json:"number"`
+	Status     string  `json:"status"`
+	Accrual    float32 `json:"accrual,omitempty"`
+	UploadedAt string  `json:"uploaded_at"`
+}
+
 func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
-	type orderResp struct {
-		Number     string  `json:"number"`
-		Status     string  `json:"status"`
-		Accrual    float32 `json:"accrual,omitempty"`
-		UploadedAt string  `json:"uploaded_at"`
-	}
 	var resp []orderResp
 
 	token, err := r.Cookie("session_token")
@@ -23,10 +24,10 @@ func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.stg.GetUserOrders(token.Value)
+	orders, err := h.orderStg.GetUserOrders(token.Value)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 	if len(orders) == 0 {
@@ -44,8 +45,8 @@ func (h *handler) GetOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	marshalResp, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 

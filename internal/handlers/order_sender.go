@@ -45,7 +45,7 @@ func (h *handler) SendOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.stg.AddOrderNumber(reqValue, token.Value)
+	err = h.orderStg.AddOrderNumber(reqValue, token.Value)
 	if err != nil {
 		if err.Error() == "duplicate" {
 			w.WriteHeader(http.StatusOK)
@@ -59,8 +59,8 @@ func (h *handler) SendOrderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 

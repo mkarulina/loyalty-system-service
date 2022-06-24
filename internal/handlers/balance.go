@@ -6,12 +6,12 @@ import (
 	"net/http"
 )
 
-func (h *handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
-	type balanceResp struct {
-		Current   float32 `json:"current"`
-		Withdrawn float32 `json:"withdrawn"`
-	}
+type balanceResp struct {
+	Current   float32 `json:"current"`
+	Withdrawn float32 `json:"withdrawn"`
+}
 
+func (h *handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("session_token")
 	if err != nil || token == nil {
 		log.Println(err)
@@ -19,10 +19,10 @@ func (h *handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, withdrawn, err := h.stg.GetUserBalanceAndWithdrawn(token.Value)
+	balance, withdrawn, err := h.orderStg.GetUserBalanceAndWithdrawn(token.Value)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -33,8 +33,8 @@ func (h *handler) GetBalanceHandler(w http.ResponseWriter, r *http.Request) {
 
 	marshalResp, err := json.Marshal(resp)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 

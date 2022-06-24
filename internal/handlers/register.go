@@ -3,19 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/jackc/pgerrcode"
+	"github.com/mkarulina/loyalty-system-service.git/internal/authentication"
 	"github.com/mkarulina/loyalty-system-service.git/internal/encryption"
-	"github.com/mkarulina/loyalty-system-service.git/internal/storage"
 	"io"
 	"log"
 	"net/http"
 )
 
-func (h *handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	type reqData struct {
-		Login    string `json:"login"`
-		Password string `json:"password"`
-	}
+type registerReq struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
 
+func (h *handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println(err)
@@ -30,7 +30,7 @@ func (h *handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unmarshalBody := reqData{}
+	unmarshalBody := registerReq{}
 	if err := json.Unmarshal(body, &unmarshalBody); err != nil {
 		log.Println("can't unmarshal request body", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -41,7 +41,7 @@ func (h *handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	encLogin := e.EncodeData(unmarshalBody.Login)
 	encPassword := e.EncodeData(unmarshalBody.Password)
 
-	err = h.auth.AddUserInfoToTable(storage.User{
+	err = h.auth.AddUserInfoToTable(authentication.User{
 		Token:    token.Value,
 		Login:    encLogin,
 		Password: encPassword,
